@@ -22,15 +22,7 @@ This isn't a framework or a SaaS product. It's a `SKILL.md` your Claude Code ses
 
 ## Getting started
 
-```
-/plugin install secure-foundry
-```
-
-or copy `skills/secure-platform-factory/` into your own project's `.claude/skills/` directory. Then, in a Claude Code session in your target repository:
-
-```
-/secure-platform-factory
-```
+Copy `skills/secure-platform-factory/` into your own project's `.claude/skills/` directory. Then, in a Claude Code session in your target repository, ask Claude to bootstrap your platform using the `secure-platform-factory` skill (Claude Code loads a skill automatically once its description matches what you're asking for — see the `SKILL.md` frontmatter).
 
 The skill will ask which cloud you're targeting, which VPN pattern you want, and whether you're starting from the open-source tool defaults or already have paid tooling in place — then walk through the setup in the order laid out in `reference/build-order.md`.
 
@@ -57,10 +49,16 @@ skills/secure-platform-factory/
     security-history.md       # real vulnerabilities caught in the AWS implementation, and the fix
     build-order.md
   terraform/
-    aws/       # complete, tested
-    gcp/       # in progress
-    azure/     # in progress
-  workflows/   # GitHub Actions templates, parameterized per cloud
+    aws/       # complete, tested in a real deployment
+    gcp/       # complete, validated (terraform fmt + validate), not yet run in production
+    azure/     # complete, validated (terraform fmt + validate), not yet run in production
+  workflows/
+    ci.yml                      # cloud-agnostic: application QA + security stages that need no cloud credentials
+    deploy-aws.yml.example      # rename to deploy.yml for the AWS path
+    deploy-gcp.yml.example      # rename to deploy.yml for the GCP path
+    deploy-azure.yml.example    # rename to deploy.yml for the Azure path
+    promote.yml.example         # the dev -> staging -> prod chain; cloud-agnostic, calls deploy.yml
+CONTRIBUTING.md
 ```
 
 ## Contributing

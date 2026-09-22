@@ -1,0 +1,84 @@
+# promote.yml.example — the auto-promotion chain: dev -> staging -> prod,
+# each hop gated by a real verification step before the next one runs.
+# Cloud-agnostic -- calls whichever deploy-<cloud>.yml.example you
+# renamed to deploy.yml. See build-order.md for why this comes after
+# the account/network/CI-CD phases, not before.
+#
+# Rename to promote.yml. Update `deploy-test`'s `uses:` path if you're
+# also running a fourth (test) environment between dev and staging --
+# see cicd-pipeline.md's "build once, promote forward" for why this
+# whole chain redeploys the SAME image_tag at every hop rather than
+# rebuilding.
+
+name: promote
+on:
+  workflow_run:
+    workflows: ["ci"] # fires once ci.yml (and your own build-and-push-image step, not shown here) succeeds on main
+    types: [completed]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  resolve-image-tag:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - run: echo "Promoting ${{ github.event.workflow_run.head_sha }}"
+
+  deploy-dev:
+    needs: resolve-image-tag
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit
+    with:
+      environment: dev
+      image_tag: ${{ needs.resolve-image-tag.outputs.image_tag }}
+
+  verify-dev:
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      # Join your VPN here if dev is internal-only (network-vpn.md) --
+      # omitted, provider-specific (Tailscale/Headscale/cloud-native).
+      - run: ./scripts/integration-test.sh https://dev.example.com # ADAPT THIS -- your real smoke/integration test script (cicd-pipeline.md stage 0)
+      - name: OWASP ZAP baseline scan
+        uses: zaproxy/action-baseline@6c5a007541891231cd9e0ddec25d4f25c59c9874 # v0.15.0
+        with:
+          target: https://dev.example.com
+          allow_issue_writing: false # needs issues:write if you want it filing GitHub issues -- not granted by default here
+
+  deploy-staging:
+    needs: [resolve-image-tag, verify-dev]
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit
+    with:
+      environment: staging
+      image_tag: ${{ needs.resolve-image-tag.outputs.image_tag }}
+
+  verify-staging:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - run: ./scripts/integration-test.sh https://staging.example.com
+      - name: OWASP ZAP baseline scan
+        uses: zaproxy/action-baseline@6c5a007541891231cd9e0ddec25d4f25c59c9874 # v0.15.0
+        with:
+          target: https://staging.example.com
+          allow_issue_writing: false
+
+  deploy-prod:
+    needs: [resolve-image-tag, verify-staging]
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit
+    with:
+      environment: prod
+      image_tag: ${{ needs.resolve-image-tag.outputs.image_tag }}
+    # This job runs against the `prod` GitHub Environment -- if you
+    # configured a required reviewer on it (github-setup.md), this is
+    # where the pipeline pauses for a human to click approve, natively,
+    # with no custom approval system needed.

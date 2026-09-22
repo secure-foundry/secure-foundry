@@ -1,0 +1,55 @@
+# deploy-aws.yml.example — reusable workflow, called once per
+# environment by promote.yml.example. Rename to deploy.yml when you
+# adopt the AWS path. Assumes the cicd_oidc Terraform module's deploy
+# role already exists for this environment (see terraform/aws/modules/cicd_oidc).
+
+name: deploy
+on:
+  workflow_call:
+    inputs:
+      environment: { required: true, type: string }
+      image_tag: { required: true, type: string }
+
+permissions:
+  id-token: write # required for OIDC -- this is what replaces a long-lived access key entirely
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }} # a real GitHub Environment -- see github-setup.md for why this matters (scoped secrets + optional required-reviewer approval)
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars[format('AWS_DEPLOY_ROLE_ARN_{0}', inputs.environment)] }}
+          aws-region: us-east-1
+
+      - name: Run database migrations
+        run: |
+          # Reach the private-subnet database via the vpn_router pattern
+          # (see network-vpn.md) -- this runner needs to have joined the
+          # tailnet in an earlier step (omitted here; see your VPN
+          # provider's own GitHub Action).
+          npx node-pg-migrate up # ADAPT THIS to your real migration tool
+
+      - name: Deploy backend
+        run: |
+          aws ecs update-service \
+            --cluster "${{ inputs.environment }}" \
+            --service "${{ inputs.environment }}-backend" \
+            --force-new-deployment
+          # This relies on a NEW task-definition revision already having
+          # been registered with the new image tag -- render and register
+          # one here with amazon-ecs-render-task-definition +
+          # amazon-ecs-deploy-task-definition, or your own equivalent,
+          # before this update-service call. Omitted for brevity; see
+          # ecs_service's own lifecycle.ignore_changes comment for why
+          # Terraform deliberately doesn't own this step.
+
+      - name: Wait for service stability
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${{ inputs.environment }}" \
+            --services "${{ inputs.environment }}-backend" "${{ inputs.environment }}-frontend"

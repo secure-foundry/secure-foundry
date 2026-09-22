@@ -4,6 +4,18 @@ Cloud-agnostic. Every stage below is a real gate in a real pipeline, not a sugge
 
 For each stage: what it catches, the open-source default, the paid alternative, and when to actually pay for the upgrade.
 
+## 0. Application QA — unit and integration tests
+
+Not a security control by itself, but it belongs in this same list: a required, blocking status check on every PR, run alongside (not instead of) the security stages below. A security-clean PR that breaks the application isn't a passing PR.
+
+**Run backend and frontend test suites as separate, parallel jobs**, not one combined job — a frontend-only change shouldn't wait on backend test setup, and a failure in one gives an unambiguous signal about which layer broke, not "something in this large combined job failed."
+
+**The backend job needs a real database, not a mock**, whenever the code under test does real queries — spin up an ephemeral database as a CI service container (e.g. Postgres) for the duration of the job, run migrations against it, then run the test suite against that real, disposable instance. A codebase's own history is usually the best teacher here: mocked-database tests that pass while the real migration underneath them is broken is a specific, real failure mode worth designing against from day one, not a hypothetical.
+
+**A coverage threshold, enforced by the test runner itself, not eyeballed.** Set a real percentage (90% is a reasonable floor for statements/branches/functions/lines) in the test runner's own configuration, and run the literal `test` script your `package.json`/`Makefile`/equivalent defines in CI — not a hand-picked subset command that happens to look similar. **This is a real, previously-learned lesson worth stating explicitly**: a 23-task migration plan once told an agent to run the real `npm test` script for the backend but a weaker, coverage-skipping subset command for the frontend — the asymmetry went unquestioned, and an identical real coverage regression on the frontend side only surfaced after pushing, when CI ran the actual script. Before treating local verification as complete, confirm the exact command being run is the literal script CI invokes, not an approximation of it.
+
+**Integration tests, run against a real deployed environment, are a distinct, later stage from unit tests** — see stage 6's DAST section for the deploy-then-verify pattern; the same "hit the real, live environment" HTTP calls that a DAST scan makes are also where a lightweight smoke/integration test suite belongs, run immediately after each deploy, before that environment is considered verified.
+
 ## 1. SAST (static analysis for first-party code)
 
 **Catches**: injection, XSS, unsafe deserialization, and logic vulnerabilities in your own code, before merge.

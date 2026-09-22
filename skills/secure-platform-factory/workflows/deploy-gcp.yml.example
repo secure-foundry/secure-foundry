@@ -1,0 +1,53 @@
+# deploy-gcp.yml.example — reusable workflow, called once per
+# environment by promote.yml.example. Rename to deploy.yml when you
+# adopt the GCP path. Assumes the workload_identity Terraform module's
+# pool/provider/service account already exist for this environment.
+
+name: deploy
+on:
+  workflow_call:
+    inputs:
+      environment: { required: true, type: string }
+      image_tag: { required: true, type: string }
+
+permissions:
+  id-token: write # required for Workload Identity Federation
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars[format('GCP_WORKLOAD_IDENTITY_PROVIDER_{0}', inputs.environment)] }}
+          service_account: ${{ vars[format('GCP_DEPLOY_SERVICE_ACCOUNT_{0}', inputs.environment)] }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Run database migrations
+        run: |
+          # Cloud SQL Auth Proxy or the vpn_router pattern (network-vpn.md)
+          # gets this runner to the private-IP database. Omitted here for
+          # brevity -- see google-github-actions/get-gke-credentials or
+          # the Cloud SQL Auth Proxy action for a real connection step.
+          npx node-pg-migrate up # ADAPT THIS to your real migration tool
+
+      - name: Deploy backend
+        run: |
+          gcloud run deploy "${{ inputs.environment }}-backend" \
+            --image "${{ inputs.image_tag }}" \
+            --region us-central1 \
+            --project "${{ vars[format('GCP_PROJECT_ID_{0}', inputs.environment)] }}" \
+            --quiet
+
+      - name: Deploy frontend
+        run: |
+          gcloud run deploy "${{ inputs.environment }}-frontend" \
+            --image "${{ inputs.image_tag }}" \
+            --region us-central1 \
+            --project "${{ vars[format('GCP_PROJECT_ID_{0}', inputs.environment)] }}" \
+            --quiet

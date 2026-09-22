@@ -1,0 +1,49 @@
+# deploy-azure.yml.example — reusable workflow, called once per
+# environment by promote.yml.example. Rename to deploy.yml when you
+# adopt the Azure path. Assumes the workload_identity Terraform module's
+# app registration/federated credential already exist for this environment.
+
+name: deploy
+on:
+  workflow_call:
+    inputs:
+      environment: { required: true, type: string }
+      image_tag: { required: true, type: string }
+
+permissions:
+  id-token: write # required for Azure AD Workload Identity Federation
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: azure/login@053f7285eb20bf5469ef084617b0b24d3cec53fc # v3.1.0
+        with:
+          client-id: ${{ vars[format('AZURE_DEPLOY_CLIENT_ID_{0}', inputs.environment)] }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars[format('AZURE_SUBSCRIPTION_ID_{0}', inputs.environment)] }}
+
+      - name: Run database migrations
+        run: |
+          # The vpn_router pattern (network-vpn.md) gets this runner to
+          # the private-IP Postgres Flexible Server. Omitted here for
+          # brevity.
+          npx node-pg-migrate up # ADAPT THIS to your real migration tool
+
+      - name: Deploy backend
+        run: |
+          az containerapp update \
+            --name "${{ inputs.environment }}-backend" \
+            --resource-group "rg-${{ inputs.environment }}" \
+            --image "${{ inputs.image_tag }}"
+
+      - name: Deploy frontend
+        run: |
+          az containerapp update \
+            --name "${{ inputs.environment }}-frontend" \
+            --resource-group "rg-${{ inputs.environment }}" \
+            --image "${{ inputs.image_tag }}"
