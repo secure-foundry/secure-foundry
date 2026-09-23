@@ -46,6 +46,8 @@ Run this in **two distinct stages**, not one:
 - **Paid alternative: Snyk Container, or Prisma Cloud.** Adds remediation guidance (exact version to bump to) and runtime correlation (which of these CVEs are actually reachable at runtime, reducing alert fatigue).
 - **When to upgrade**: once CVE volume across your images is high enough that "which of these 40 findings actually matter" becomes a real triage problem.
 
+**Also generate an SBOM (Software Bill of Materials) here** — the same Trivy invocation, pointed at the same image, with `--format cyclonedx` instead of `--format sarif`. A machine-readable inventory of every component in what you actually shipped, increasingly asked for in SOC 2 audits and customer security questionnaires. Near-zero incremental cost since it's the same tool already running in this stage, not a new one — see `workflows/ci.yml`'s `container-scan` job.
+
 ## 4. Dependency vulnerability + license scanning (PR-time)
 
 **Catches**: a *newly introduced* vulnerable or non-compliant dependency, at the moment it's added — distinct from stage 3, which scans the built image on a schedule/every merge. This stage should block the specific PR introducing the problem dependency, before it ever reaches a built image.
@@ -53,6 +55,11 @@ Run this in **two distinct stages**, not one:
 - **Open-source default: OSV-Scanner** (Google's Open Source Vulnerabilities scanner). Free, no license required, integrates as a PR-diff-aware check.
 - **Paid alternative: GitHub's dependency-review-action (requires a GHAS license)**, or Snyk Open Source.
 - **This is commonly a real gap**: a team without a GHAS license often has *no* PR-time block here at all, relying only on a weekly Dependabot sweep (see stage 7) to eventually catch it — meaning a vulnerable dependency can sit in `main` for up to a week. OSV-Scanner closes this gap at zero license cost; there's rarely a good reason to skip this stage entirely.
+
+**A distinct risk this stage doesn't catch: a newly-published *malicious* package, not a known-vulnerable one.** OSV-Scanner and Dependabot both work off already-assigned CVEs/advisories — a brand-new supply-chain attack (a typosquatted package name, a compromised maintainer account pushing a backdoored release) has no CVE yet, so neither tool sees it.
+
+- **Open-source default: [Guarddog](https://github.com/DataDog/guarddog)** (Datadog, MIT-licensed). Runs static analysis (YARA rules) plus package-metadata heuristics against PyPI, npm, Go, Rust, RubyGems, GitHub Actions, and VSCode-extension packages, looking for supply-chain-attack patterns rather than known CVEs. `guarddog npm verify package.json` / `guarddog pypi verify requirements.txt` (SARIF output) integrate the same way OSV-Scanner does — see `workflows/ci.yml`'s `guarddog` job.
+- **No distinct paid tier** — this is a narrower, purpose-built tool without the point/paid split the other stages have. A unified commercial ASPM platform (see below) folds this capability into its broader SCA product instead.
 
 ## 5. Infrastructure-as-code scanning
 
@@ -95,6 +102,11 @@ Also run `terraform fmt -check` and `terraform validate` (or your IaC tool's nat
 Every stage above names a specific open-source point solution plus its own specific paid upgrade (Semgrep→CodeQL, Trivy→Snyk Container, and so on). There's a different kind of alternative worth knowing about: a **unified application/cloud security platform** (often marketed as ASPM — Application Security Posture Management) that covers most of stages 1–6 (SAST, dependency/SCA, secrets, container, IaC, cloud posture, and DAST) from one product and one dashboard, instead of six separately-configured tools. Several commercial vendors sell exactly this category, positioning it as "one security system, from code to production" rather than a stitched-together set of point solutions.
 
 The tradeoff is the same one that applies to any all-in-one platform versus best-of-breed tools: less integration work and one place to triage findings, at the cost of vendor lock-in and a licensing spend that replaces what's otherwise free. Worth evaluating once stitching together six separate free tools' config and alert-fatigue becomes the actual bottleneck — not a default recommendation for a team just getting started, for the same "don't pay for this on day one" reasoning stage 1 already gives.
+
+**Honestly deferred, not missed** — three more categories a unified ASPM platform typically lists that this pipeline doesn't build a stage for, and why:
+- **DSPM (sensitive-data discovery in cloud storage/databases)** — a data-governance maturity step, not a pipeline gate; revisit once you're actually storing enough regulated data that "what sensitive data do we have, and where" stops being answerable from memory.
+- **Attack surface monitoring / continuous, autonomous pentesting** — overlaps with the DAST paid-tier upgrade path already covered in stage 6 (Burp Suite Enterprise, StackHawk); a separate always-on external-recon product is a later upgrade, not a day-one gap.
+- **Device protection (blocking supply-chain attacks on developer laptops)** — a real category, but endpoint security, not a CI/CD pipeline stage. Out of scope for this skill; if you need it, it's a separate product decision (e.g. an EDR agent), not something a GitHub Actions job can provide.
 
 ## Two structural patterns, regardless of tool choice
 
