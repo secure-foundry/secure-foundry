@@ -66,6 +66,23 @@ module "network" {
   domain_name = var.domain_name
   public_alb  = var.is_production
   vpn_cidr    = var.vpn_advertised_cidr
+  kms_key_arn = module.kms.key_arn
+}
+
+module "config_recorder" {
+  source   = "../modules/config_recorder"
+  env_name = var.env_name
+}
+
+# Applied once per account, same as account_baseline above -- for the
+# proven multi-account layout (accounts-aws.md), apply this ONCE in your
+# findings-aggregator account (log-archive), not per environment, since
+# that's the account Security Hub/GuardDuty are delegated to. In a
+# single-account starter setup, applying it here is correct as-is.
+module "security_alerting" {
+  source       = "../modules/security_alerting"
+  env_name     = var.env_name
+  alert_emails = [var.budget_alert_email]
 }
 
 module "rds" {
