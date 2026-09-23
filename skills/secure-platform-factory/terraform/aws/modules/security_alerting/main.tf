@@ -37,14 +37,19 @@ resource "aws_sns_topic_policy" "security_alerts" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.security_alerts.arn
-      # Scoped to the specific rule that should be allowed to publish
-      # here, not "any EventBridge rule anywhere" -- confused-deputy
-      # prevention, matching AWS's own documented pattern for
-      # EventBridge's Lambda/SQS targets (its SNS-target doc page omits
-      # this condition, but the underlying reasoning is identical).
-      Condition = {
-        ArnEquals = { "aws:SourceArn" = aws_cloudwatch_event_rule.security_hub_high_severity.arn }
-      }
+      # No aws:SourceArn/SourceAccount condition, deliberately -- an
+      # earlier version added one, modeled on the (correct) pattern for
+      # Lambda/SQS targets, and it silently dropped every single
+      # publish, defeating the entire point of this pipe (caught by
+      # independent review before merge, not in production). AWS's own
+      # confused-deputy guidance for aws:SourceArn on EventBridge
+      # targets is documented for the IAM-execution-role trust-policy
+      # path, not this one (a direct resource-based policy, no
+      # execution role) -- and AWS's own official example for this
+      # exact SNS case has no condition at all, unlike its Lambda/SQS
+      # equivalents. Matches that literal, working example rather than
+      # a plausible-looking but unverified extension of a different
+      # service's pattern.
     }]
   })
 }

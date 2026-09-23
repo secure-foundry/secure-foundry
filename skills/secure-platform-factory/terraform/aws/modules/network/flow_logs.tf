@@ -51,7 +51,15 @@ resource "aws_iam_role_policy" "flow_logs" {
         "logs:DescribeLogGroups",
         "logs:DescribeLogStreams",
       ]
-      Resource = "${aws_cloudwatch_log_group.flow_logs.arn}:*"
+      # Resource "*", matching AWS's own documented policy for this
+      # exact role -- an earlier version scoped this to the specific
+      # log group's ARN, which looks like tighter least-privilege but
+      # actually breaks flow log delivery: DescribeLogGroups and
+      # CreateLogGroup don't support resource-level permissions at all,
+      # so scoping the whole statement away from "*" causes AccessDenied
+      # the moment the flow-logs service tries to validate/discover the
+      # destination (caught by independent review before merge).
+      Resource = "*"
     }]
   })
 }
