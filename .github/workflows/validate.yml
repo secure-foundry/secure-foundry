@@ -1,0 +1,78 @@
+# This repo's OWN CI -- distinct from skills/secure-platform-factory/workflows/,
+# which are templates for adopters to copy into THEIR projects, not live
+# automation for this one. This is what actually gates a PR here, and
+# what CONTRIBUTING.md's "run terraform fmt -check and validate before
+# it's reviewable" promise is backed by.
+
+name: validate
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  terraform-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with: { terraform_wrapper: false }
+      - run: terraform fmt -check -recursive skills/secure-platform-factory/terraform/
+
+  terraform-validate-aws:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with: { terraform_wrapper: false }
+      - name: validate every module and the example composition
+        run: |
+          set -e
+          for dir in skills/secure-platform-factory/terraform/aws/modules/*/ skills/secure-platform-factory/terraform/aws/example-env/; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+
+  terraform-validate-gcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with: { terraform_wrapper: false }
+      - name: validate every module and the example composition
+        run: |
+          set -e
+          for dir in skills/secure-platform-factory/terraform/gcp/modules/*/ skills/secure-platform-factory/terraform/gcp/example-env/; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+
+  terraform-validate-azure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with: { terraform_wrapper: false }
+      - name: validate every module and the example composition
+        run: |
+          set -e
+          for dir in skills/secure-platform-factory/terraform/azure/modules/*/ skills/secure-platform-factory/terraform/azure/example-env/; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+
+  workflow-templates-yaml-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: confirm every workflow template is well-formed YAML
+        run: |
+          set -e
+          for f in skills/secure-platform-factory/workflows/*.yml skills/secure-platform-factory/workflows/*.yml.example .github/workflows/*.yml; do
+            ruby -ryaml -e "YAML.load_file('$f')" && echo "OK: $f"
+          done
