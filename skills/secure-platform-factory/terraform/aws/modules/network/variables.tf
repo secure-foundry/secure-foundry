@@ -30,3 +30,8 @@ variable "vpn_cidr" {
   type        = string
   description = "The CIDR range your VPN pattern's traffic arrives from (e.g. your Tailscale/WireGuard mesh's own address range), so a non-public ALB can allow exactly that range instead of 0.0.0.0/0. See network-vpn.md."
 }
+
+variable "kms_key_arn" {
+  type        = string
+  description = "This environment's own customer-managed key (module.kms.key_arn) -- encrypts the VPC Flow Logs log group. The kms module already grants CloudWatch Logs the needed encrypt/decrypt permissions."
+}

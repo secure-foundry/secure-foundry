@@ -27,7 +27,7 @@ jobs:
       - name: validate every module and the example composition
         run: |
           set -e
-          for dir in skills/secure-platform-factory/terraform/aws/modules/*/ skills/secure-platform-factory/terraform/aws/example-env/; do
+          for dir in skills/secure-platform-factory/terraform/aws/modules/*/ skills/secure-platform-factory/terraform/aws/example-*/; do
             echo "::group::$dir"
             terraform -chdir="$dir" init -backend=false -input=false
             terraform -chdir="$dir" validate

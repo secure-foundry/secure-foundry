@@ -45,6 +45,15 @@ variable "desired_count" {
   default = 1
 }
 
+# Leave empty for a self-contained single-account setup (config_recorder
+# creates its own bucket here). Once you have a log-archive account
+# (example-log-archive), set this to that account's centralized bucket
+# name (its own config-storage.tf output) instead -- see accounts-aws.md.
+variable "central_config_bucket_name" {
+  type    = string
+  default = ""
+}
+
 data "aws_caller_identity" "current" {}
 
 # key_user_role_arns is deliberately left at its default ([]): the roles
@@ -66,6 +75,25 @@ module "network" {
   domain_name = var.domain_name
   public_alb  = var.is_production
   vpn_cidr    = var.vpn_advertised_cidr
+  kms_key_arn = module.kms.key_arn
+}
+
+module "config_recorder" {
+  source              = "../modules/config_recorder"
+  env_name            = var.env_name
+  central_bucket_name = var.central_config_bucket_name
+}
+
+# Applied once per account, same as account_baseline above. If you've
+# adopted the full multi-account layout (example-management,
+# example-log-archive), remove this block -- example-log-archive already
+# applies it ONCE there instead, which is the only place that sees every
+# account's Security Hub/GuardDuty findings. Leave it here only for a
+# single-account starter setup.
+module "security_alerting" {
+  source       = "../modules/security_alerting"
+  env_name     = var.env_name
+  alert_emails = [var.budget_alert_email]
 }
 
 module "rds" {
