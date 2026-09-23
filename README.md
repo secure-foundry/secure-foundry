@@ -103,6 +103,10 @@ CONTRIBUTING.md
 
 See `CONTRIBUTING.md`. The short version: this project holds itself to the same review discipline it recommends (`skills/secure-platform-factory/reference/review-culture.md`) — a PR that changes a security-relevant default gets an independent adversarial review, not a single-approver rubber stamp, before merge. `main` is protected accordingly: 1 required review, required status checks, no force-push or deletion.
 
+## Changelog
+
+See `CHANGELOG.md`. This project is pre-1.0 on purpose — see that file's own "Versioning" section for what has to be true before it moves past `0.y.z`.
+
 ## License
 
 Apache 2.0 — see `LICENSE`. Chosen deliberately over MIT for its explicit patent grant; see `CONTRIBUTING.md` and the project history for the reasoning if you're deciding this for your own project too.
