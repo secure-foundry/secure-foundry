@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # This repo's own workflow files (both the real CI in .github/workflows/
+  # and, separately, actions referenced in skills/secure-platform-factory/workflows/
+  # -- Dependabot only scans .github/workflows/, so the template files'
+  # pinned SHAs need manual re-verification against the GitHub API when
+  # bumped, the same way they were originally verified).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Terraform provider version constraints, across all three clouds.
+  - package-ecosystem: "terraform"
+    directory: "/skills/secure-platform-factory/terraform/aws"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "terraform"
+    directory: "/skills/secure-platform-factory/terraform/gcp"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "terraform"
+    directory: "/skills/secure-platform-factory/terraform/azure"
+    schedule:
+      interval: "weekly"
