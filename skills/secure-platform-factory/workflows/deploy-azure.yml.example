@@ -32,7 +32,7 @@ jobs:
           # The vpn_router pattern (network-vpn.md) gets this runner to
           # the private-IP Postgres Flexible Server. Omitted here for
           # brevity.
-          npx node-pg-migrate up # ADAPT THIS to your real migration tool
+          npx node-pg-migrate@9.0.0 up # pinned -- an unpinned npx invocation pulls whatever's newest at runtime, a real supply-chain gap SkillSpector's own first scan caught (security-history.md). ADAPT THIS to your real migration tool/version.
 
       - name: Deploy backend
         run: |

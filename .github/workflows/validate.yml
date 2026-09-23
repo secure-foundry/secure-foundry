@@ -76,3 +76,66 @@ jobs:
           for f in skills/secure-platform-factory/workflows/*.yml skills/secure-platform-factory/workflows/*.yml.example .github/workflows/*.yml; do
             ruby -ryaml -e "YAML.load_file('$f')" && echo "OK: $f"
           done
+
+  # Runs the free, MIT-licensed gitleaks CLI directly via its official
+  # container image, NOT the gitleaks-action wrapper -- that wrapper's
+  # v3 requires a paid license for any organization-owned repo (found
+  # running this exact job: "[secure-foundry] is an organization.
+  # License key is required."). The underlying scanner stays fully
+  # open source regardless of the wrapper's own licensing; this project
+  # doesn't pay for something it explicitly advocates as a free default.
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0 # full history -- see cicd-pipeline.md stage 2 for why
+      # A one-shot `docker run`, not a job-level `container:` block --
+      # gitleaks' image is built to exit after one scan, not stay alive
+      # for repeated `docker exec` calls, which a `container:` job
+      # requires (found running this exact job: exit 126, container
+      # already gone). `docker run` is also gitleaks' own documented
+      # usage pattern.
+      #
+      # The repo path is a positional argument to `git`, not `--source`
+      # -- that flag belongs to the old `detect` command and v8.30.1's
+      # `git` subcommand rejects it outright ("unknown flag: --source",
+      # found running this exact job).
+      - run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --verbose
+
+  # OBSERVATIONAL, not yet a required check -- see cicd-pipeline.md stage 5
+  # for why IaC misconfiguration scanning is deliberately not blocking on
+  # its first run against reference Terraform meant to be adapted, not
+  # applied as-is.
+  checkov:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: checkov
+        uses: bridgecrewio/checkov-action@444c9db6fa75e2d9c19ebf1fde7322089be9009e # v12.3125.0
+        with:
+          directory: skills/secure-platform-factory/terraform/
+          framework: terraform
+          soft_fail: true
+
+  # OBSERVATIONAL, not yet a required check -- see cicd-pipeline.md stage 8.
+  # Static-only mode (--no-llm): free, no API key, no external LLM call.
+  # continue-on-error until we've reviewed a real run's findings and
+  # either fixed them or accepted them into a baseline file.
+  skillspector:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with: { python-version: "3.12" }
+      - name: install skillspector
+        run: pip install "git+https://github.com/NVIDIA/skillspector.git@69dcdfb74487d361ba4c811d088cfdea2ff3a9dc" # v2.11.2
+      - name: scan this repo's own skill content
+        run: skillspector scan skills/secure-platform-factory/ --no-llm --format sarif --output skillspector.sarif
+      - name: upload SARIF to GitHub code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@9887d98ae49f1f598651b556d8c8f02f3ea065cb # v3.27.0
+        with:
+          sarif_file: skillspector.sarif
