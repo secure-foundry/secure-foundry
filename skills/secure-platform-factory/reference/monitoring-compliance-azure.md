@@ -1,4 +1,4 @@
-# Monitoring, Detection, and Compliance Mapping — Azure — Designed, Not Yet Battle-Tested
+# Monitoring, Detection, and Compliance Mapping — Azure — Work in Progress
 
 Same structure as the AWS and GCP docs: every control tagged against the SOC 2 TSC / NIST CSF 2.0 family it satisfies, honest about documented gaps.
 

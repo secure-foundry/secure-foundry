@@ -1,4 +1,4 @@
-# GCP Project Structure — Designed, Not Yet Battle-Tested
+# GCP Project Structure — Work in Progress
 
 This is the GCP mapping of the same pattern proven in `accounts-aws.md`. The account/project isolation model, the reasoning, and the sequencing are the same — only the native service names differ. Read `accounts-aws.md` first if you haven't; this doc assumes that reasoning and just re-maps it.
 

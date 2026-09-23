@@ -1,4 +1,4 @@
-# Encryption and Secrets — GCP — Designed, Not Yet Battle-Tested
+# Encryption and Secrets — GCP — Work in Progress
 
 Same pattern as `encryption-secrets-aws.md`; GCP-native mechanisms below.
 

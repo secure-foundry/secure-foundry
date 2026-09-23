@@ -17,9 +17,9 @@ This isn't a framework or a SaaS product, and it isn't a generic "best practices
 
 ## Status — read this before you start
 
-**AWS is the only fully tested, production-proven implementation.** Every pattern under `skills/secure-platform-factory/terraform/aws/` and every claim in the AWS-specific reference docs was extracted from a real platform that has been running in multiple live AWS accounts, gone through independent adversarial security review, and had real vulnerabilities found and fixed (see `skills/secure-platform-factory/reference/security-history.md` for the specific issues caught — a wildcard OIDC trust-policy match, an under-encrypted RDS master secret, a cross-subdomain cookie vulnerability — each with what was wrong and how it was fixed).
+**AWS is battle-tested and proven.** Every pattern under `skills/secure-platform-factory/terraform/aws/` and every claim in the AWS-specific reference docs was extracted from a real platform that has been running in multiple live AWS accounts, gone through independent adversarial security review, and had real vulnerabilities found and fixed (see `skills/secure-platform-factory/reference/security-history.md` for the specific issues caught — a wildcard OIDC trust-policy match, an under-encrypted RDS master secret, a cross-subdomain cookie vulnerability — each with what was wrong and how it was fixed).
 
-**GCP and Azure are designed, not yet battle-tested.** The patterns are the same (same account/project isolation model, same CI/CD gate structure, same encryption and secrets discipline), mapped onto each cloud's native equivalent services. They have not run in a real production environment yet. Treat them as a well-reasoned starting point that needs your own review, not a proven default. Contributions that report real production experience with the GCP or Azure paths — especially anything that breaks — are the single most valuable kind of issue you can file (see `CONTRIBUTING.md`).
+**GCP and Azure are work in progress.** The patterns are the same (same account/project isolation model, same CI/CD gate structure, same encryption and secrets discipline), mapped onto each cloud's native equivalent services, and every module validates cleanly — they're just earlier in the same journey AWS has already been through: real production mileage and adversarial review. Contributions that put either path through real production use — especially anything that surfaces a fix — are the single most valuable kind of issue you can file (see `CONTRIBUTING.md`), and are exactly how the AWS path got to where it is now.
 
 ## What this actually sets up
 
@@ -69,9 +69,9 @@ You stay in control throughout: this is a Claude Code session doing real, review
 skills/secure-platform-factory/
   SKILL.md                    # entry point — routes to the reference docs below
   reference/
-    accounts-aws.md           # proven
-    accounts-gcp.md           # designed, untested
-    accounts-azure.md         # designed, untested
+    accounts-aws.md           # battle-tested
+    accounts-gcp.md           # work in progress
+    accounts-azure.md         # work in progress
     cicd-pipeline.md          # cloud-agnostic tool matrix
     network-vpn.md            # cloud-agnostic VPN pattern + per-cloud wiring
     encryption-secrets-aws.md
@@ -86,9 +86,9 @@ skills/secure-platform-factory/
     security-history.md       # real vulnerabilities caught in the AWS implementation, and the fix
     build-order.md
   terraform/
-    aws/       # complete, tested in a real deployment
-    gcp/       # complete, validated (terraform fmt + validate), not yet run in production
-    azure/     # complete, validated (terraform fmt + validate), not yet run in production
+    aws/       # battle-tested in a real production deployment
+    gcp/       # complete, validated (terraform fmt + validate) -- work in progress toward the same production mileage as AWS
+    azure/     # complete, validated (terraform fmt + validate) -- work in progress toward the same production mileage as AWS
   workflows/
     ci.yml                      # cloud-agnostic: application QA + security stages that need no cloud credentials
     deploy-aws.yml.example      # rename to deploy.yml for the AWS path

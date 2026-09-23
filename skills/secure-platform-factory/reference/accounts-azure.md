@@ -1,4 +1,4 @@
-# Azure Subscription Structure — Designed, Not Yet Battle-Tested
+# Azure Subscription Structure — Work in Progress
 
 The Azure mapping of the pattern proven in `accounts-aws.md`. Same reasoning, same sequencing — Azure's native names and one structural difference (resource groups) below.
 

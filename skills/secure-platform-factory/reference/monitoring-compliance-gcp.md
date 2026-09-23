@@ -1,4 +1,4 @@
-# Monitoring, Detection, and Compliance Mapping — GCP — Designed, Not Yet Battle-Tested
+# Monitoring, Detection, and Compliance Mapping — GCP — Work in Progress
 
 Same structure as `monitoring-compliance-aws.md`: every control tagged against the SOC 2 TSC / NIST CSF 2.0 family it satisfies, and honest about what's a documented short-term gap rather than a built control.
 
@@ -20,6 +20,6 @@ Same structure as `monitoring-compliance-aws.md`: every control tagged against t
 | Findings routed to a human (a Cloud Monitoring alerting policy + notification channel, not just collected in SCC's dashboard) | The same gap as AWS's "collected but not routed" problem — treat this with the same urgency the AWS doc does; a detection control nobody sees fire is barely better than none. | Low cost, higher priority than it looks. |
 | A verified backup-restore drill for Cloud SQL | Backup configuration being correct isn't the same as having exercised the actual restore process once under real conditions. | Effort, not cost. |
 
-## What's genuinely unverified here, beyond the general "not battle-tested" caveat
+## What's genuinely unverified here, beyond the general "work in progress" status
 
 Whether Security Command Center's Premium tier findings actually cover the same practical ground GuardDuty's Runtime Monitoring does for a running container's *behavior* (not just its configuration) hasn't been confirmed against a real running workload under this skill's own pattern. If you adopt this path and find a real gap here, that's exactly the kind of finding `security-history.md` exists to collect — file it.
