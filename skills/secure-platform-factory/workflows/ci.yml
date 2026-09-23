@@ -76,9 +76,43 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0 # full history -- see cicd-pipeline.md stage 2 for why
-      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # NOT gitleaks/gitleaks-action -- that wrapper's v3 requires a paid
+      # license for any organization-owned repo ("[org] is an organization.
+      # License key is required.", found running this exact job on
+      # secure-foundry/secure-foundry itself). The underlying gitleaks CLI
+      # stays MIT-licensed regardless; run its official image directly.
+      # The repo path is a positional [repo] argument to `git`, not
+      # --source -- that flag belongs to gitleaks' older `detect` command
+      # and v8 rejects it ("unknown flag: --source"), also found running
+      # this exact job. See security-history.md.
+      - run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --verbose
+
+  guarddog:
+    # Catches a genuinely different risk class than osv-scanner/Dependabot
+    # below: a newly-published MALICIOUS package (typosquat, compromised
+    # maintainer account), not a known CVE in an otherwise-legitimate one.
+    # No CVE has been assigned yet for a brand-new supply-chain attack --
+    # osv-scanner and Dependabot both only catch already-known-vulnerable
+    # packages, so neither catches this. See cicd-pipeline.md stage 4.
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with: { python-version: "3.12" }
+      - run: pip install guarddog==3.2.0
+      # ADAPT THIS: one `verify` call per package manifest your app has --
+      # shown here for the two package.json files this template's own
+      # backend-unit-tests/frontend-unit-tests jobs use.
+      - run: |
+          guarddog npm verify apps/backend/package.json --output-format sarif > guarddog-backend.sarif
+          guarddog npm verify apps/frontend/package.json --output-format sarif > guarddog-frontend.sarif
+      - uses: github/codeql-action/upload-sarif@9887d98ae49f1f598651b556d8c8f02f3ea065cb # v3.27.0
+        if: always()
+        with:
+          sarif_file: .
+          category: guarddog
 
   osv-scanner:
     runs-on: ubuntu-latest
@@ -103,3 +137,46 @@ jobs:
         with:
           directory: infra/
           framework: terraform
+
+  # ---- Stage 3: container image scanning + SBOM (cicd-pipeline.md) ----
+  # This job doesn't build anything itself -- wire it in immediately
+  # after your own build-and-push-image step (app-specific, not shown in
+  # this template) runs on a push to main, scanning the exact image
+  # reference you just pushed. ADAPT THIS: image-ref, and the trigger
+  # (this file's own `on:` above is PR-only; give this job its own
+  # `if: github.ref == 'refs/heads/main'` guard, or move it into whatever
+  # workflow your build step lives in).
+  container-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Trivy vulnerability scan (final image, blocking)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: your-registry/your-image:${{ github.sha }} # ADAPT THIS
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          format: sarif
+          output: trivy-results.sarif
+      - uses: github/codeql-action/upload-sarif@9887d98ae49f1f598651b556d8c8f02f3ea065cb # v3.27.0
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+      # SBOM generation -- same tool, no new dependency. Increasingly
+      # required for SOC 2 / customer security questionnaires / exec-order
+      # supply-chain-transparency requirements; near-zero cost since Trivy
+      # is already the stage 3 tool.
+      - name: Generate SBOM (CycloneDX)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: your-registry/your-image:${{ github.sha }} # ADAPT THIS -- same reference as above
+          format: cyclonedx
+          output: sbom.cyclonedx.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom-${{ github.sha }}
+          path: sbom.cyclonedx.json
+          retention-days: 90
