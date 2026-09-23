@@ -117,15 +117,26 @@ resource "azurerm_linux_virtual_machine" "router" {
           set -euo pipefail
           az login --identity --username ${azurerm_user_assigned_identity.router.client_id} >/dev/null
           AUTHKEY=$(az keyvault secret show --vault-name "${var.key_vault_name}" --name "${var.tailscale_authkey_secret_name}" --query value -o tsv)
+          # --restart=always is intentional, not an oversight flagged by a
+          # scanner and ignored: a subnet router that doesn't come back up
+          # after a crash or reboot silently breaks every tailnet client's
+          # route to this VPC until someone notices. Accepted, not removed.
           docker run -d --name tailscale --restart=always \
             -e TS_AUTHKEY="$AUTHKEY" \
             -e TS_ROUTES="${var.advertised_cidr}" \
             -e TS_USERSPACE=true \
             -e TS_EXTRA_ARGS="--advertise-tags=tag:ci --accept-routes=false" \
-            tailscale/tailscale:stable
+            tailscale/tailscale:v1.102.4
     runcmd:
       - systemctl enable --now docker
-      - curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+      # Verifiable package-repo install, NOT `curl | bash` -- imports
+      # Microsoft's real signing key and installs via apt like any other
+      # package, rather than piping an unverified remote script straight
+      # into a shell (found by SkillSpector's own first real scan against
+      # this repo -- see security-history.md).
+      - curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.gpg
+      - echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ jammy main" > /etc/apt/sources.list.d/azure-cli.list
+      - apt-get update && apt-get install -y azure-cli
       - /opt/start-tailscale.sh
   EOF
   )

@@ -77,7 +77,7 @@ resource "google_compute_instance" "router" {
       spec = {
         containers = [{
           name  = "tailscale"
-          image = "tailscale/tailscale:stable"
+          image = "tailscale/tailscale:v1.102.4" # pinned, not the floating "stable" tag -- same fix as the Azure vpn_router module, see security-history.md
           env = [
             { name = "TS_AUTHKEY", valueFrom = { secretKeyRef = { name = var.tailscale_authkey_secret_id, key = "latest" } } },
             { name = "TS_ROUTES", value = var.advertised_cidr },
