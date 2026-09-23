@@ -96,7 +96,12 @@ jobs:
       # requires (found running this exact job: exit 126, container
       # already gone). `docker run` is also gitleaks' own documented
       # usage pattern.
-      - run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git --source /repo --verbose
+      #
+      # The repo path is a positional argument to `git`, not `--source`
+      # -- that flag belongs to the old `detect` command and v8.30.1's
+      # `git` subcommand rejects it outright ("unknown flag: --source",
+      # found running this exact job).
+      - run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --verbose
 
   # OBSERVATIONAL, not yet a required check -- see cicd-pipeline.md stage 5
   # for why IaC misconfiguration scanning is deliberately not blocking on
