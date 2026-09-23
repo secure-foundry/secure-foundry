@@ -116,6 +116,13 @@ resource "aws_iam_role" "config" {
       Effect    = "Allow"
       Principal = { Service = "config.amazonaws.com" }
       Action    = "sts:AssumeRole"
+      # AWS's own documented recommended trust policy for this exact role
+      # includes this condition, to prevent the confused-deputy problem --
+      # without it, the trust policy technically allows any account's
+      # Config service to assume this role, not just this one's.
+      Condition = {
+        StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id }
+      }
     }]
   })
 }

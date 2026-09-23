@@ -12,6 +12,9 @@ resource "aws_cloudwatch_log_group" "flow_logs" {
   kms_key_id        = var.kms_key_arn
 }
 
+data "aws_caller_identity" "flow_logs" {}
+data "aws_region" "flow_logs" {}
+
 resource "aws_iam_role" "flow_logs" {
   name = "${var.env_name}-vpc-flow-logs"
   assume_role_policy = jsonencode({
@@ -20,6 +23,16 @@ resource "aws_iam_role" "flow_logs" {
       Effect    = "Allow"
       Principal = { Service = "vpc-flow-logs.amazonaws.com" }
       Action    = "sts:AssumeRole"
+      # AWS's own recommended hardening (confused-deputy prevention):
+      # without this, the trust policy technically allows any account's
+      # flow-logs service to assume this role, not just this one's. The
+      # flow-log-id portion of SourceArn is wildcarded because the role
+      # must exist before the flow log resource that would supply it --
+      # AWS's own docs recommend exactly this workaround.
+      Condition = {
+        StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.flow_logs.account_id }
+        ArnLike      = { "aws:SourceArn" = "arn:aws:ec2:${data.aws_region.flow_logs.name}:${data.aws_caller_identity.flow_logs.account_id}:vpc-flow-log/*" }
+      }
     }]
   })
 }

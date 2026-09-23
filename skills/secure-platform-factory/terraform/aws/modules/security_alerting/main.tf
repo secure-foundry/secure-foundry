@@ -37,6 +37,14 @@ resource "aws_sns_topic_policy" "security_alerts" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.security_alerts.arn
+      # Scoped to the specific rule that should be allowed to publish
+      # here, not "any EventBridge rule anywhere" -- confused-deputy
+      # prevention, matching AWS's own documented pattern for
+      # EventBridge's Lambda/SQS targets (its SNS-target doc page omits
+      # this condition, but the underlying reasoning is identical).
+      Condition = {
+        ArnEquals = { "aws:SourceArn" = aws_cloudwatch_event_rule.security_hub_high_severity.arn }
+      }
     }]
   })
 }
@@ -88,6 +96,8 @@ variable "teams_channel_id" {
   description = "Microsoft Teams channel ID to post security alerts to."
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_iam_role" "chatbot" {
   count = (var.slack_team_id != "" || var.teams_team_id != "") ? 1 : 0
   name  = "${var.env_name}-security-alerts-chatbot"
@@ -97,6 +107,11 @@ resource "aws_iam_role" "chatbot" {
       Effect    = "Allow"
       Principal = { Service = "chatbot.amazonaws.com" }
       Action    = "sts:AssumeRole"
+      # Same confused-deputy prevention as every other service-principal
+      # trust policy in this module.
+      Condition = {
+        StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id }
+      }
     }]
   })
 }
