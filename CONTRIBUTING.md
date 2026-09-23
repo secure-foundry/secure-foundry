@@ -30,7 +30,7 @@ If you fix it yourself, please also add an entry to `reference/security-history.
 
 - **Not a place for application-specific business logic.** This skill bootstraps the platform a product runs on, not the product itself. If your contribution is specific to one company's domain model, it doesn't belong here even if it's well-written.
 - **Not a place for a fourth cloud unless it's built with the same rigor as the first three.** A partial module set for a new provider, without validated Terraform and without the matching reference docs, creates more confusion than value — open an issue to discuss scope before starting that work.
-- **Not a place to remove the honesty markers.** Don't change "designed, not yet battle-tested" language to sound more confident than the evidence supports, even if your own deployment worked — one success doesn't retroactively make a pattern proven for everyone; add your experience to `security-history.md` or a similar record instead of upgrading the claim.
+- **Not a place to remove the honesty markers.** Don't change "work in progress" language to sound more confident than the evidence supports, even if your own deployment worked — one success doesn't retroactively make a pattern battle-tested for everyone; add your experience to `security-history.md` or a similar record instead of upgrading the claim.
 
 ## Getting help
 

@@ -1,4 +1,4 @@
-# Encryption and Secrets — Azure — Designed, Not Yet Battle-Tested
+# Encryption and Secrets — Azure — Work in Progress
 
 Same pattern as the AWS and GCP docs. **One consolidation worth naming up front**: Azure Key Vault holds encryption keys AND secrets in the same resource (as distinct object types — "keys" and "secrets" — inside one vault), where AWS and GCP split this into two separate services (KMS + Secrets Manager, Cloud KMS + Secret Manager). This isn't a gap in the Azure design, just a real structural difference: one `key_vault` module in this skill's Azure path does the job of both the AWS `kms` module and the credential-injection half of `encryption-secrets-aws.md`.
 

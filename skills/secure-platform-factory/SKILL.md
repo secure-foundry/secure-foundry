@@ -7,7 +7,7 @@ description: Use when starting a new project (or hardening an existing one) that
 
 Bootstraps the security/compliance foundation a project stands everything else on: cloud account structure, CI/CD gates, network isolation, encryption, and monitoring — mapped to real audit-framework language, not just "best practices."
 
-**Status**: the AWS path is proven (built and run in a real production platform, independently reviewed, real vulnerabilities caught and fixed — see `reference/security-history.md`). The GCP and Azure paths are designed but not yet battle-tested. Say so plainly to whoever you're helping before they commit to either.
+**Status**: the AWS path is battle-tested and proven (built and run in a real production platform, independently reviewed, real vulnerabilities caught and fixed — see `reference/security-history.md`). The GCP and Azure paths are work in progress — the same patterns, fully validated, just earlier in the journey toward that same real-world mileage. Say so plainly to whoever you're helping before they commit to either.
 
 ## Before you start
 
