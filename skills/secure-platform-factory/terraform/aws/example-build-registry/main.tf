@@ -226,6 +226,59 @@ resource "aws_ecr_repository_policy" "frontend_cross_account" {
   })
 }
 
+# --- CI push identity ---
+# The repository policies above are pull-only (no ecr:PutImage), matching
+# "only this account's own CI role can push" -- but that role has to
+# actually exist somewhere. Since builds happen in THIS account (not each
+# environment's own account -- see the file header), it lives here, using
+# the same OIDC pattern every environment's own deploy role uses.
+variable "github_repository_id" {
+  type        = string
+  description = "GitHub's own numeric repository ID for the repo whose CI pushes images here. Find it via: gh api repos/OWNER/REPO --jq .id"
+}
+
+variable "github_repository_owner_id" {
+  type        = string
+  description = "GitHub's own numeric organization/owner ID. Find it via: gh api orgs/OWNER --jq .id"
+}
+
+module "cicd_oidc" {
+  source                     = "../modules/cicd_oidc"
+  env_name                   = "build-registry"
+  github_repository_id       = var.github_repository_id
+  github_repository_owner_id = var.github_repository_owner_id
+  deploy_permissions_policy_json = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "ecr:GetAuthorizationToken" # this one action does NOT support resource-level scoping -- must stay Resource "*"
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload",
+        ]
+        Resource = [
+          aws_ecr_repository.backend.arn,
+          aws_ecr_repository.frontend.arn,
+          aws_ecr_repository.vpn_router.arn,
+        ]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:GenerateDataKey*", "kms:Decrypt", "kms:DescribeKey"]
+        Resource = aws_kms_key.registry.arn
+      }
+    ]
+  })
+}
+
 resource "aws_inspector2_enabler" "this" {
   account_ids    = [data.aws_caller_identity.current.account_id]
   resource_types = ["ECR"] # continuous/enhanced scanning, not just scan-on-push

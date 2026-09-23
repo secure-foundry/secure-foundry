@@ -40,6 +40,12 @@ resource "aws_securityhub_account" "this" {}
 resource "aws_securityhub_organization_configuration" "this" {
   auto_enable           = true
   auto_enable_standards = "DEFAULT"
+  # No attribute of aws_securityhub_account.this is referenced above, so
+  # nothing in this resource's own arguments tells Terraform it must wait
+  # -- without this, a first apply can call the org-configuration API
+  # before Security Hub is actually enabled in this account yet, which
+  # AWS rejects (account-not-subscribed/invalid-access).
+  depends_on = [aws_securityhub_account.this]
 }
 
 resource "aws_config_configuration_aggregator" "org" {
@@ -48,6 +54,12 @@ resource "aws_config_configuration_aggregator" "org" {
     all_regions = true
     role_arn    = aws_iam_role.config_aggregator.arn
   }
+  # Referencing the role's ARN doesn't tell Terraform to wait for the
+  # POLICY attached to it -- without this, the aggregator can be created
+  # concurrently with the policy attachment, and Config may try to assume
+  # the role before it actually has organization permissions, which AWS
+  # rejects.
+  depends_on = [aws_iam_role_policy_attachment.config_aggregator]
 }
 
 resource "aws_iam_role" "config_aggregator" {

@@ -86,3 +86,8 @@ resource "aws_s3_bucket_policy" "config" {
     )
   })
 }
+
+output "config_bucket_name" {
+  value       = aws_s3_bucket.config.id
+  description = "Pass this as central_config_bucket_name in every environment's example-env (accounts-aws.md step 5)."
+}

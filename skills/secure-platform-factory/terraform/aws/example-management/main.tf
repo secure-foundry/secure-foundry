@@ -8,7 +8,11 @@
 # nothing (creating the org itself needs the AWS web console -- there's no
 # API for that first step). Applying this for the first time against a
 # brand-new org (just IAM Identity Center enabled, nothing else) is the
-# expected starting point.
+# expected starting point -- but Terraform still needs to be told that
+# org already exists before its first apply here, or CreateOrganization
+# fails outright (the account already belongs to one). One-time, before
+# the first apply:
+#   terraform import aws_organizations_organization.this $(aws organizations describe-organization --query Organization.Id --output text)
 
 terraform {
   required_version = ">= 1.7"
